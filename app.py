@@ -43,9 +43,62 @@ def search_researcher_with_fallback(agent, name, specialization=None):
             (result.get('basic_info') and len(result.get('basic_info')) > 0)
         )
         
+        # Make secondary requests for specific information types that might be missing
+        if not result.get('clinical_trials') and 'clinical_trials' in agent.sources:
+            # Try a more specific search for clinical trials
+            try:
+                print(f"Making a targeted search for clinical trials by {name}")
+                specific_query = f"{name} clinical trial investigator"
+                # Use the agent's openai capability to find clinical trials
+                if agent.openai_api_key:
+                    trials_info = get_specific_researcher_info(
+                        agent.openai_api_key, 
+                        name, 
+                        "clinical_trials",
+                        f"Find clinical trials where {name} is an investigator or contributor"
+                    )
+                    if trials_info and trials_info.get('clinical_trials'):
+                        result['clinical_trials'] = trials_info.get('clinical_trials')
+            except Exception as e:
+                print(f"Error in targeted clinical trials search: {e}")
+        
+        # Try to find affiliations if missing
+        if not result.get('affiliations'):
+            try:
+                print(f"Making a targeted search for affiliations of {name}")
+                if agent.openai_api_key:
+                    affiliations_info = get_specific_researcher_info(
+                        agent.openai_api_key, 
+                        name, 
+                        "affiliations",
+                        f"Find current and past institutional affiliations of {name}"
+                    )
+                    if affiliations_info and affiliations_info.get('affiliations'):
+                        result['affiliations'] = affiliations_info.get('affiliations')
+            except Exception as e:
+                print(f"Error in targeted affiliations search: {e}")
+        
+        # Try to find research interests if missing
+        if not result.get('research_interests'):
+            try:
+                print(f"Making a targeted search for research interests of {name}")
+                if agent.openai_api_key:
+                    interests_info = get_specific_researcher_info(
+                        agent.openai_api_key, 
+                        name, 
+                        "research_interests",
+                        f"List the specific research interests and focus areas of {name}"
+                    )
+                    if interests_info and interests_info.get('research_interests'):
+                        result['research_interests'] = interests_info.get('research_interests')
+            except Exception as e:
+                print(f"Error in targeted research interests search: {e}")
+        
         if has_meaningful_data:
             return result, None
         else:
+            print(f"No meaningful data found for {name}, trying fallback...")
+            
             # Try direct web search if API key available
             fallback_info = get_researcher_info_from_openai(agent.openai_api_key, name, specialization)
             if fallback_info:
@@ -126,6 +179,60 @@ def get_researcher_info_from_openai(api_key, name, specialization=None):
         return researcher_data
     except Exception as e:
         raise e
+
+# Function to get specific information about a researcher
+def get_specific_researcher_info(api_key, name, info_type, specific_query):
+    """Get specific types of information about a researcher using OpenAI."""
+    openai.api_key = api_key
+    
+    prompt = f"""
+    I need specific information about medical researcher {name}.
+    Specifically, I'm looking for their {info_type}.
+    {specific_query}
+    
+    Please provide only factual information, and format the response as JSON with the key '{info_type}'.
+    If the information type is 'clinical_trials', the value should be an array of objects with title, status, and condition.
+    If the information type is 'affiliations', the value should be an array of strings.
+    If the information type is 'research_interests', the value should be an array of strings.
+    """
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a research assistant specializing in finding specific information about medical researchers. Provide accurate, factual information in JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3
+        )
+        
+        # Extract and parse the JSON response
+        content = response.choices[0].message.content
+        
+        # Extract JSON from response (it might be surrounded by markdown code blocks)
+        json_match = re.search(r'```json\n(.*?)\n```', content, re.DOTALL)
+        if json_match:
+            content = json_match.group(1)
+        elif content.strip().startswith('{') and content.strip().endswith('}'):
+            # It's already JSON without the markdown formatting
+            pass
+        else:
+            # Try to extract anything that looks like JSON
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
+        
+        try:
+            result_data = json.loads(content)
+            return result_data
+        except json.JSONDecodeError:
+            # If we can't parse the JSON, create a simple structure
+            result = {info_type: [content.strip()]}
+            return result
+            
+    except Exception as e:
+        print(f"Error getting specific researcher info: {str(e)}")
+        return {}
 
 # Initialize session state variables
 if 'agent' not in st.session_state:
@@ -334,7 +441,7 @@ def display_researcher_profile(researcher_data):
                     st.markdown(f"[View Publication]({pub['url']})")
                 st.markdown("---")
         else:
-            st.info("No publications found")
+            st.info("No publications found. Try adding specific university or research institution websites to improve search results.")
     
     # Clinical Trials tab
     with tabs[1]:
@@ -349,30 +456,55 @@ def display_researcher_profile(researcher_data):
                     st.markdown(f"[View Trial]({trial['url']})")
                 st.markdown("---")
         else:
-            st.info("No clinical trials found")
+            st.info("No clinical trials found. The researcher may not be involved in clinical trials, or this information is not publicly available.")
+            st.markdown("**Tip:** Try adding the researcher's institution website or clinicaltrials.gov profile URL in the 'Add Custom Websites' section.")
     
     # Affiliations tab
     with tabs[2]:
         if researcher_data.get('affiliations'):
-            for affiliation in researcher_data['affiliations']:
-                st.markdown(f"- {affiliation}")
+            for i, affiliation in enumerate(researcher_data['affiliations'], 1):
+                st.markdown(f"**{i}.** {affiliation}")
         else:
-            st.info("No affiliations found")
+            st.info("No affiliations found. Try adding the researcher's institution website to improve search results.")
     
     # Research Interests tab
     with tabs[3]:
         if researcher_data.get('research_interests'):
-            for interest in researcher_data['research_interests']:
-                st.markdown(f"- {interest}")
+            for i, interest in enumerate(researcher_data['research_interests'], 1):
+                st.markdown(f"**{i}.** {interest}")
         else:
-            st.info("No research interests found")
+            st.info("No research interests found. Try using the chat feature to ask about their research focus areas.")
     
     # Other Info tab
     with tabs[4]:
-        # Key contributions section
+        # Key contributions section - improved display
         if researcher_data.get('key_contributions'):
             st.subheader("Key Contributions")
-            st.write(researcher_data['key_contributions'])
+            
+            # Check if it's already a string or if it might be in another format
+            if isinstance(researcher_data['key_contributions'], str):
+                # Just display the text
+                st.write(researcher_data['key_contributions'])
+            elif isinstance(researcher_data['key_contributions'], list):
+                # Display as numbered list
+                for i, contribution in enumerate(researcher_data['key_contributions'], 1):
+                    st.markdown(f"**{i}.** {contribution}")
+            elif isinstance(researcher_data['key_contributions'], dict):
+                # If it's a dictionary, format each entry
+                for key, value in researcher_data['key_contributions'].items():
+                    st.markdown(f"**{key}:** {value}")
+            else:
+                # Just convert to string and display
+                st.write(str(researcher_data['key_contributions']))
+        
+        # Education background - specifically highlighted
+        if researcher_data.get('education'):
+            st.subheader("Education")
+            if isinstance(researcher_data['education'], list):
+                for i, edu in enumerate(researcher_data['education'], 1):
+                    st.markdown(f"**{i}.** {edu}")
+            else:
+                st.write(researcher_data['education'])
         
         # Additional insights section
         if researcher_data.get('additional_insights'):
