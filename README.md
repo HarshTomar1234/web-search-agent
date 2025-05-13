@@ -2,8 +2,7 @@
 
 An AI-powered application that helps you find comprehensive information about medical researchers from various sources including academic databases and research platforms.
 
-
-![Medical Researcher Search Tool][(images/Screenshot 2025-05-13 182955.png)]
+![Medical Researcher Search Tool](images/Screenshot%202025-05-13%20182955.png)
 
 ## Overview
 
@@ -38,14 +37,16 @@ The Medical Researcher Search Tool combines web scraping, data integration, and 
 - **Chat**: Ask specific questions about the researcher
 - **CSV Upload**: Import researcher data from CSV files
 
-## Contributing
+## Data Sources
 
-Contributions are welcome! To contribute to this project:
+- PubMed - Medical publications and research papers
+- ResearchGate - Academic profiles and connections
+- Google Scholar - Citations and academic impact
+- ClinicalTrials.gov - Clinical trial involvement
 
-1. Fork the repository
-2. Create a new branch for your feature
-3. Make your changes and commit them
-4. Open a Pull Request
+## License
+
+This project is licensed under the MIT License.
 
 ---
 
