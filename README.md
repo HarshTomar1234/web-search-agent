@@ -3,7 +3,7 @@
 An AI-powered application that helps you find comprehensive information about medical researchers from various sources including academic databases and research platforms.
 
 
-![Medical Researcher Search Tool](images/Screenshot 2025-05-13 182955.png)
+![Medical Researcher Search Tool][(images/Screenshot 2025-05-13 182955.png)]
 
 ## Overview
 
