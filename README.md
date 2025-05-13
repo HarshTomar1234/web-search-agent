@@ -47,10 +47,6 @@ Contributions are welcome! To contribute to this project:
 3. Make your changes and commit them
 4. Open a Pull Request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ---
 
 Created by i3 Digital Health Team 
