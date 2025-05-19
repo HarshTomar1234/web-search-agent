@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import openai
 import time
 
-# Load environment variables from .env file
+
 load_dotenv()
 
 # Page configuration
@@ -45,11 +45,9 @@ def search_researcher_with_fallback(agent, name, specialization=None):
         
         # Make secondary requests for specific information types that might be missing
         if not result.get('clinical_trials') and 'clinical_trials' in agent.sources:
-            # Try a more specific search for clinical trials
             try:
                 print(f"Making a targeted search for clinical trials by {name}")
                 specific_query = f"{name} clinical trial investigator"
-                # Use the agent's openai capability to find clinical trials
                 if agent.openai_api_key:
                     trials_info = get_specific_researcher_info(
                         agent.openai_api_key, 
@@ -62,7 +60,7 @@ def search_researcher_with_fallback(agent, name, specialization=None):
             except Exception as e:
                 print(f"Error in targeted clinical trials search: {e}")
         
-        # Try to find educational background if missing
+        
         if not result.get('education'):
             try:
                 print(f"Making a targeted search for educational background of {name}")
@@ -78,7 +76,7 @@ def search_researcher_with_fallback(agent, name, specialization=None):
             except Exception as e:
                 print(f"Error in targeted education search: {e}")
         
-        # Try to find affiliations if missing
+        
         if not result.get('affiliations'):
             try:
                 print(f"Making a targeted search for affiliations of {name}")
@@ -94,7 +92,7 @@ def search_researcher_with_fallback(agent, name, specialization=None):
             except Exception as e:
                 print(f"Error in targeted affiliations search: {e}")
         
-        # Try to find research interests if missing
+       
         if not result.get('research_interests'):
             try:
                 print(f"Making a targeted search for research interests of {name}")
@@ -110,7 +108,7 @@ def search_researcher_with_fallback(agent, name, specialization=None):
             except Exception as e:
                 print(f"Error in targeted research interests search: {e}")
         
-        # Validate publication links if present
+        # validating publication links if present
         if result.get('publications'):
             for pub in result['publications']:
                 if not pub.get('url') or not pub['url'].startswith(('http://', 'https://')):
@@ -119,7 +117,7 @@ def search_researcher_with_fallback(agent, name, specialization=None):
                         search_title = pub['title'].replace(' ', '+')
                         pub['url'] = f"https://pubmed.ncbi.nlm.nih.gov/?term={search_title}"
         
-        # Validate clinical trial links if present
+        # validating clinical trial links if present
         if result.get('clinical_trials'):
             for trial in result['clinical_trials']:
                 if not trial.get('url') or not trial['url'].startswith(('http://', 'https://')):
@@ -133,30 +131,25 @@ def search_researcher_with_fallback(agent, name, specialization=None):
         else:
             print(f"No meaningful data found for {name}, trying fallback...")
             
-            # Try direct web search if API key available
+           
             fallback_info = get_researcher_info_from_openai(agent.openai_api_key, name, specialization)
             if fallback_info:
-                # Merge with any partial info we might have
                 for key, value in fallback_info.items():
                     if key not in result or not result[key]:
                         result[key] = value
                 return result, None
             
-            # If we have some data, return it
             if result.get('name'):
                 return result, "Limited information found. Please try a different researcher."
             else:
                 return None, f"Could not find information about {name}. Please try another name or check spelling."
     except Exception as e:
-        # If no data was found, try to use OpenAI to generate information
         try:
-            # Fallback to web search via OpenAI
             fallback_info = get_researcher_info_from_openai(agent.openai_api_key, name, specialization)
             return fallback_info, None
         except Exception as e2:
             return None, f"Could not retrieve information: {str(e2)}"
 
-# Function to use OpenAI API directly to get researcher information
 def get_researcher_info_from_openai(api_key, name, specialization=None):
     openai.api_key = api_key
     
@@ -199,17 +192,15 @@ def get_researcher_info_from_openai(api_key, name, specialization=None):
             temperature=0.3
         )
         
-        # Extract and parse the JSON response
         content = response.choices[0].message.content
         
-        # Extract JSON from response (it might be surrounded by markdown code blocks)
+
         json_match = re.search(r'```json\n(.*?)\n```', content, re.DOTALL)
         if json_match:
             content = json_match.group(1)
         
         researcher_data = json.loads(content)
         
-        # Add name and specialization to the data
         researcher_data["name"] = name
         researcher_data["specialization"] = specialization
         researcher_data["ai_generated"] = True
@@ -218,9 +209,9 @@ def get_researcher_info_from_openai(api_key, name, specialization=None):
         # Process and validate publication URLs
         if "publications" in researcher_data:
             for pub in researcher_data["publications"]:
-                # Ensure URL exists and is properly formatted
+                # ensuring URL exists and is properly formatted
                 if "url" not in pub or not pub["url"] or not pub["url"].startswith(("http://", "https://")):
-                    # Try to construct a search URL if missing
+                    # trying to construct a search URL if  missing...just too see and test whether streamlit can show hyperlinks
                     if "title" in pub and pub["title"]:
                         pub_title = pub["title"].replace(" ", "+")
                         pub["url"] = f"https://pubmed.ncbi.nlm.nih.gov/?term={pub_title}"
@@ -228,9 +219,9 @@ def get_researcher_info_from_openai(api_key, name, specialization=None):
         # Process and validate clinical trial URLs
         if "clinical_trials" in researcher_data:
             for trial in researcher_data["clinical_trials"]:
-                # Ensure URL exists and is properly formatted
+                # ensuring URL exists and is properly formatted
                 if "url" not in trial or not trial["url"] or not trial["url"].startswith(("http://", "https://")):
-                    # Add a default clinical trials search if URL is missing
+                    # adding a default clinical trials search if URL is missing ...for streamlit visuals
                     if "title" in trial and trial["title"]:
                         trial_title = trial["title"].replace(" ", "+")
                         trial["url"] = f"https://clinicaltrials.gov/search?term={trial_title}"
@@ -244,7 +235,7 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
     """Get specific types of information about a researcher using OpenAI."""
     openai.api_key = api_key
     
-    # Customize the prompt based on the information type
+    # Customize the prompt based on the information type....we can if we want....bla bla
     if info_type == "clinical_trials":
         type_instructions = """
         For clinical trials, provide direct links to ClinicalTrials.gov or other official trial registry pages.
@@ -298,10 +289,10 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
             temperature=0.3
         )
         
-        # Extract and parse the JSON response
+        # extracting and parse the JSON response
         content = response.choices[0].message.content
         
-        # Extract JSON from response (it might be surrounded by markdown code blocks)
+        # extracting JSON from response (it might be surrounded by markdown code blocks)
         json_match = re.search(r'```json\n(.*?)\n```', content, re.DOTALL)
         if json_match:
             content = json_match.group(1)
@@ -309,7 +300,7 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
             # It's already JSON without the markdown formatting
             pass
         else:
-            # Try to extract anything that looks like JSON
+            # tryinf to extract anything that looks like JSON
             json_match = re.search(r'\{.*\}', content, re.DOTALL)
             if json_match:
                 content = json_match.group(0)
@@ -317,11 +308,11 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
         try:
             result_data = json.loads(content)
             
-            # Validate URLs for publication and clinical trial data
+            # validating URLs for publication and clinical trial data
             if info_type == "publications" and "publications" in result_data:
                 for pub in result_data["publications"]:
                     if not pub.get("url") or not pub["url"].startswith(("http://", "https://")):
-                        # Create a search URL if missing
+                        # creating a search URL if missing....for just visuals
                         if pub.get("title"):
                             title_query = pub["title"].replace(" ", "+")
                             pub["url"] = f"https://pubmed.ncbi.nlm.nih.gov/?term={title_query}"
@@ -329,14 +320,14 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
             if info_type == "clinical_trials" and "clinical_trials" in result_data:
                 for trial in result_data["clinical_trials"]:
                     if not trial.get("url") or not trial["url"].startswith(("http://", "https://")):
-                        # Create a search URL if missing
+                        
                         if trial.get("title"):
                             title_query = trial["title"].replace(" ", "+")
                             trial["url"] = f"https://clinicaltrials.gov/search?term={title_query}"
             
             return result_data
         except json.JSONDecodeError:
-            # If we can't parse the JSON, create a simple structure
+            # here if we can't parse the JSON, create a simple structure
             result = {info_type: [content.strip()]}
             return result
             
@@ -346,17 +337,17 @@ def get_specific_researcher_info(api_key, name, info_type, specific_query):
 
 # Initialize session state variables
 if 'agent' not in st.session_state:
-    # Get API key from environment
+  
     api_key = os.getenv("OPENAI_API_KEY")
     
-    # Clean up API key - remove whitespace and join multiple lines
+    
     if api_key:
         api_key = api_key.replace(" ", "").replace("\n", "").strip()
     
     if api_key:
         st.session_state.agent = MedicalResearcherAgent(openai_api_key=api_key)
     else:
-        # Manual API key entry as fallback
+        # manual API key entry as fallback 
         st.error("OpenAI API key not found in environment variables. Enter it manually below.")
         api_key = st.text_input("Enter your OpenAI API key:", type="password")
         if api_key:
@@ -382,10 +373,10 @@ if 'search_performed' not in st.session_state:
 if 'researcher_data' not in st.session_state:
     st.session_state.researcher_data = {}
 
-# Create the main layout
+# creating the main layout
 st.title("Medical Researcher Search Tool")
 
-# Create tabs for data input options
+# creating tabs for data input options
 input_tabs = st.tabs(["Upload CSV", "Add Custom Websites", "Search Researcher"])
 
 # Tab 1: CSV Upload
@@ -398,19 +389,19 @@ with input_tabs[0]:
     
     if csv_file is not None and not st.session_state.csv_uploaded:
         try:
-            # Save uploaded file to a temporary file
+            # saving uploaded file to a temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
                 tmp_file.write(csv_file.getvalue())
                 tmp_path = tmp_file.name
             
-            # Load the CSV data
+            # loading the CSV data
             df = st.session_state.agent.load_csv_data(tmp_path)
             
             # Update session state
             st.session_state.csv_uploaded = True
             st.success(f"CSV file uploaded successfully! {len(df)} researchers loaded.")
             
-            # Clean up temp file
+            # cleaning up temp file
             os.unlink(tmp_path)
         except Exception as e:
             st.error(f"Error processing CSV file: {str(e)}")
@@ -422,12 +413,12 @@ with input_tabs[1]:
     st.header("Add Custom Research Websites")
     st.info("Add specific websites to enhance search capabilities. These could include university profiles, research lab pages, or other sources with researcher information.")
     
-    # Display current websites
+    # display current websites
     st.subheader("Current Search Sources")
     for site_name, site_url in st.session_state.websites.items():
         st.text(f"{site_name.replace('_', ' ').title()}: {site_url}")
     
-    # Add new website
+    # for adding new website....
     st.subheader("Add New Website")
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -456,20 +447,20 @@ with input_tabs[2]:
     with col2:
         specialization = st.text_input("Specialization (optional)", placeholder="e.g., Immunology", key="specialization")
 
-    # Search button
+    
     search_col1, search_col2 = st.columns([1, 3])
     with search_col1:
         if st.button("Search Researcher", key="search_button"):
             if not researcher_name:
                 st.error("Please enter a researcher name")
             else:
-                # Show loading spinner during search
+                # creating loading spinner during search..for visuals only....
                 with st.spinner(f"Searching for information about {researcher_name}..."):
                     try:
                         # Update agent with current websites
                         st.session_state.agent.sources = st.session_state.websites
                         
-                        # Search for researcher information with fallback
+                        # here search for researcher information with fallback
                         researcher_data, error = search_researcher_with_fallback(
                             st.session_state.agent, 
                             researcher_name, 
@@ -484,14 +475,14 @@ with input_tabs[2]:
                             st.session_state.search_performed = True
                             st.session_state.researcher_data = researcher_data
                             
-                            # Clear chat history for new researcher
+                            # clearing chat history for new researcher
                             st.session_state.chat_history = []
                             st.session_state.chat_history.append({
                                 "role": "assistant",
                                 "content": f"I've gathered information about {researcher_name}. What would you like to know?"
                             })
                             
-                            # Success message
+                            #  message
                             if researcher_data.get('ai_generated'):
                                 st.success(f"Found information about {researcher_name} (AI-generated with web search)")
                             else:
@@ -504,9 +495,9 @@ with input_tabs[2]:
                     except Exception as e:
                         st.error(f"Error searching for researcher: {str(e)}")
     with search_col2:
-        st.markdown("**💡 Tip:** The search will query PubMed, ResearchGate, Google Scholar, ClinicalTrials.gov and use web search.")
+        st.markdown("**💡 Tip:** The search will query PubMed, ResearchGate, Google Scholar, ClinicalTrials.gov and use web search.") ##..just added to show....remove it ..
 
-# Function to display researcher profile in a well-formatted way
+# function to display researcher profile
 def display_researcher_profile(researcher_data):
     """Display the researcher profile in a well-formatted way."""
     if not researcher_data:
@@ -519,23 +510,23 @@ def display_researcher_profile(researcher_data):
     if researcher_data.get('specialization'):
         st.write(f"**Specialization:** {researcher_data.get('specialization')}")
     
-    # Show AI-generated badge if applicable
+    #  AI-generated badge if applicable
     if researcher_data.get('ai_generated', False):
         st.warning("Some information was generated using AI as it wasn't found in primary sources. Please verify critical details.")
     
-    # Display basic info
+   
     if researcher_data.get('basic_info'):
         st.subheader("Basic Information")
         for key, value in researcher_data['basic_info'].items():
             if key != 'full_name':  # Skip full name as we already displayed it
                 st.write(f"**{key.replace('_', ' ').title()}:** {value}")
     
-    # Display summary if available
+    
     if researcher_data.get('summary'):
         st.subheader("Summary")
         st.write(researcher_data.get('summary'))
     
-    # Create tabs for different sections
+    # tabs for different sections
     tabs = st.tabs(["Publications", "Clinical Trials", "Education", "Affiliations", "Research Interests", "Other Info"])
     
     # Publications tab
@@ -545,7 +536,6 @@ def display_researcher_profile(researcher_data):
             for i, pub in enumerate(researcher_data['publications'][:10], 1):
                 publication_title = pub.get('title', 'Untitled')
                 
-                # Create a section with title and link
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.markdown(f"**{i}. {publication_title}**")
@@ -553,12 +543,10 @@ def display_researcher_profile(researcher_data):
                     if pub.get('url'):
                         st.markdown(f"[View Publication]({pub['url']})")
                 
-                # Display other publication details
                 if pub.get('authors'):
                     st.markdown(f"*Authors:* {pub['authors']}")
                     
-                # Display journal and year in same line if available
-                journal_info = []
+                # here display journal and year in same line 
                 if pub.get('journal'):
                     journal_info.append(f"*Journal:* {pub['journal']}")
                 if pub.get('year'):
@@ -571,7 +559,7 @@ def display_researcher_profile(researcher_data):
                 if pub.get('doi'):
                     st.markdown(f"*DOI:* [{pub['doi']}](https://doi.org/{pub['doi']})")
                     
-                # Direct links to different sources if available
+                # Direct links to different sources if available or extracted...
                 links = []
                 if pub.get('pubmed_url'):
                     links.append(f"[PubMed]({pub['pubmed_url']})")
@@ -594,7 +582,7 @@ def display_researcher_profile(researcher_data):
             for i, trial in enumerate(researcher_data['clinical_trials'], 1):
                 trial_title = trial.get('title', 'Untitled trial')
                 
-                # Create a section with title and link
+              
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.markdown(f"**{i}. {trial_title}**")
@@ -602,7 +590,7 @@ def display_researcher_profile(researcher_data):
                     if trial.get('url'):
                         st.markdown(f"[View Trial]({trial['url']})")
                 
-                # Display status and condition
+                # here display status and condition
                 status_condition = []
                 if trial.get('status'):
                     status_condition.append(f"*Status:* {trial['status']}")
@@ -612,11 +600,11 @@ def display_researcher_profile(researcher_data):
                 if status_condition:
                     st.markdown(" | ".join(status_condition))
                 
-                # Display identifier if available
+                # display identifier if available
                 if trial.get('identifier'):
                     st.markdown(f"*Identifier:* {trial['identifier']}")
                 
-                # Display link to direct ClinicalTrials.gov page if available
+                # here display link to direct ClinicalTrials.gov page if available
                 if trial.get('url') and 'clinicaltrials.gov' in trial.get('url', ''):
                     st.markdown(f"[View on ClinicalTrials.gov]({trial['url']})")
                     
@@ -625,7 +613,7 @@ def display_researcher_profile(researcher_data):
             st.info("No clinical trials found. The researcher may not be involved in clinical trials, or this information is not publicly available.")
             st.markdown("**Tip:** Try adding the researcher's institution website or clinicaltrials.gov profile URL in the 'Add Custom Websites' section.")
     
-    # Education tab - now a primary tab
+    # Education tab 
     with tabs[2]:
         if researcher_data.get('education'):
             st.markdown("### Educational Background")
@@ -671,18 +659,16 @@ def display_researcher_profile(researcher_data):
             
             # Check if it's already a string or if it might be in another format
             if isinstance(researcher_data['key_contributions'], str):
-                # Just display the text
                 st.write(researcher_data['key_contributions'])
             elif isinstance(researcher_data['key_contributions'], list):
-                # Display as numbered list
                 for i, contribution in enumerate(researcher_data['key_contributions'], 1):
                     st.markdown(f"**{i}.** {contribution}")
             elif isinstance(researcher_data['key_contributions'], dict):
-                # If it's a dictionary, format each entry
+                # If it's a dictionary, formatting each entry....
                 for key, value in researcher_data['key_contributions'].items():
                     st.markdown(f"**{key}:** {value}")
             else:
-                # Just convert to string and display
+                # here just convert to string and display
                 st.write(str(researcher_data['key_contributions']))
         
         # Additional insights section
@@ -718,7 +704,7 @@ def display_researcher_profile(researcher_data):
 # Results and chat interface (only show if search has been performed)
 if st.session_state.search_performed and st.session_state.current_researcher:
     
-    # Create tabs for Profile and Chat
+   # 2 tabs
     tab1, tab2 = st.tabs(["Researcher Profile", "Ask Questions"])
     
     # Profile tab
@@ -733,19 +719,18 @@ if st.session_state.search_performed and st.session_state.current_researcher:
     with tab2:
         st.subheader("Ask Questions About This Researcher")
         
-        # Display chat history
+        # let's display chat history
         for message in st.session_state.chat_history:
             if message["role"] == "user":
                 st.chat_message("user").write(message["content"])
             else:
                 st.chat_message("assistant").write(message["content"])
         
-        # Add custom website search input for specific questions
+        # adding custom website search input for specific questions
         with st.expander("Add a specific website to search for more information"):
             custom_website = st.text_input("Enter website URL (e.g., university profile page)", key="custom_website_chat")
             if st.button("Add Website to Search Sources", key="add_website_chat"):
                 if custom_website:
-                    # Add to session state and agent sources
                     site_name = f"custom_{len(st.session_state.websites)}"
                     st.session_state.websites[site_name] = custom_website
                     st.session_state.agent.sources[site_name] = custom_website
@@ -754,56 +739,50 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                 else:
                     st.error("Please enter a valid URL")
         
-        # Question input - moved to appear after all displayed messages
         question = st.chat_input("Ask a question about this researcher...")
         
         if question:
-            # Add user question to chat history
             st.session_state.chat_history.append({"role": "user", "content": question})
             
-            # Display the user message
+            # here displaying the user message
             st.chat_message("user").write(question)
             
-            # Get answer from agent with web search
             with st.spinner("Searching for information..."):
                 try:
                     researcher_name = st.session_state.current_researcher
                     
-                    # Build comprehensive context about the researcher from all available data
                     context = ""
                     if researcher_name in st.session_state.agent.researchers_data:
                         researcher_data = st.session_state.agent.researchers_data[researcher_name]
                         context_parts = []
                         
-                        # Add basic information to context
+        
                         if researcher_data.get('summary'):
                             context_parts.append(f"Summary: {researcher_data.get('summary')}")
                         
-                        # Add educational background
+                       
                         if researcher_data.get('education'):
                             if isinstance(researcher_data['education'], list):
                                 context_parts.append(f"Education: {', '.join(researcher_data.get('education'))}")
                             else:
                                 context_parts.append(f"Education: {researcher_data.get('education')}")
                         
-                        # Add affiliations with more details
                         if researcher_data.get('affiliations'):
                             context_parts.append(f"Affiliations: {', '.join(researcher_data.get('affiliations'))}")
                             
-                        # Add research interests
                         if researcher_data.get('research_interests'):
                             context_parts.append(f"Research interests: {', '.join(researcher_data.get('research_interests'))}")
                         
-                        # Add key contributions
+    
                         if researcher_data.get('key_contributions'):
                             if isinstance(researcher_data['key_contributions'], str):
                                 context_parts.append(f"Key contributions: {researcher_data.get('key_contributions')}")
                             elif isinstance(researcher_data['key_contributions'], list):
                                 context_parts.append(f"Key contributions: {', '.join(researcher_data.get('key_contributions'))}")
                         
-                        # Add publications with URLs
+           
                         if researcher_data.get('publications'):
-                            pubs = researcher_data.get('publications')[:5]  # Limit to 5 to avoid too large context
+                            pubs = researcher_data.get('publications')[:5]  # only 5 display...
                             pub_texts = []
                             for pub in pubs:
                                 pub_text = pub.get('title', '')
@@ -813,9 +792,9 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                             if pub_texts:
                                 context_parts.append(f"Notable publications: {'; '.join(pub_texts)}")
                         
-                        # Add clinical trials with URLs
+                        
                         if researcher_data.get('clinical_trials'):
-                            trials = researcher_data.get('clinical_trials')[:3]  # Limit to 3
+                            trials = researcher_data.get('clinical_trials')[:3]  # 3 display
                             trial_texts = []
                             for trial in trials:
                                 trial_text = trial.get('title', '')
@@ -825,7 +804,6 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                             if trial_texts:
                                 context_parts.append(f"Clinical trials: {'; '.join(trial_texts)}")
                         
-                        # Include available URLs for reference
                         if researcher_data.get('source_urls'):
                             url_parts = []
                             for source, url in researcher_data['source_urls'].items():
@@ -837,7 +815,6 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                         if context_parts:
                             context = "Information about " + researcher_name + ":\n\n" + "\n\n".join(context_parts)
                     
-                    # Add information about custom websites that have been added
                     custom_websites = []
                     for site_name, site_url in st.session_state.websites.items():
                         if site_name not in ['pubmed', 'researchgate', 'google_scholar', 'clinical_trials']:
@@ -846,10 +823,9 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                     if custom_websites:
                         context += "\n\nCustom websites provided for reference:\n" + "\n".join(custom_websites)
                     
-                    # Use OpenAI API to get an answer
+
                     openai.api_key = st.session_state.agent.openai_api_key
                     
-                    # Ask web search to provide additional information if needed
                     try:
                         # First attempt to use existing data to answer
                         prompt = f"""
@@ -875,10 +851,10 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                             temperature=0.3
                         )
                         
-                        # Get the answer from the response
+                        # get the answer from the response
                         answer = response.choices[0].message.content
                         
-                        # Check if the answer indicates missing information
+                        # checking if the answer indicates missing information
                         missing_info_phrases = [
                             "context doesn't contain", 
                             "information isn't in the provided context",
@@ -890,9 +866,9 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                         
                         needs_web_search = any(phrase in answer.lower() for phrase in missing_info_phrases)
                         
-                        # If we need more information, try a web search
+            
                         if needs_web_search and "custom_" in "".join(st.session_state.websites.keys()):
-                            # Perform a targeted search using custom websites
+                            # here we perform a targeted search using custom websites
                             web_prompt = f"""
                             I need specific information about {researcher_name} to answer this question: {question}
                             
@@ -914,23 +890,23 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                             
                             web_answer = web_response.choices[0].message.content
                             
-                            # Combine the answers
+                            # combining all the answers
                             answer = f"{answer}\n\nAfter searching provided websites, I found additional information:\n\n{web_answer}"
                         
-                        # Add agent response to chat history
+                        # adding agent response to chat history
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": answer
                         })
                         
-                        # Display the response
+                        
                         st.chat_message("assistant").write(answer)
                         
                     except Exception as e:
                         error_msg = f"Error getting answer: {str(e)}"
                         st.error(error_msg)
                         
-                        # Add error message to chat
+                     
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": f"I'm sorry, I encountered an error: {str(e)}"
@@ -941,8 +917,7 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                 except Exception as e:
                     error_msg = f"Error processing request: {str(e)}"
                     st.error(error_msg)
-                    
-                    # Add error message to chat
+                
                     st.session_state.chat_history.append({
                         "role": "assistant",
                         "content": f"I'm sorry, I encountered an error: {str(e)}"
@@ -950,11 +925,11 @@ if st.session_state.search_performed and st.session_state.current_researcher:
                     
                     st.chat_message("assistant").write(f"I'm sorry, I encountered an error: {str(e)}")
             
-            # After answering, rerun to reset the question input
-            time.sleep(0.5)  # Small delay to ensure the message is displayed
+            # After answering, rerun to reset the question input...
+            time.sleep(0.5) 
             st.rerun()
         
-        # Suggested questions
+
         st.subheader("Suggested Questions")
         col1, col2 = st.columns(2)
         
@@ -975,8 +950,9 @@ if st.session_state.search_performed and st.session_state.current_researcher:
             if st.button("What is their educational background?", key="q4"):
                 st.session_state.chat_history.append({"role": "user", "content": "What is their educational background? Where did they study?"})
                 st.rerun()
+                
 
-# Welcome message if no search has been performed
+# starting message...
 if not st.session_state.search_performed:
     st.info("""
     ### Welcome to the Medical Researcher Search Tool!
@@ -1002,6 +978,6 @@ if not st.session_state.search_performed:
     - Dr. Francis Collins (Genetics)
     """)
 
-# Footer
+
 st.markdown("---")
 st.caption("Medical Researcher Search Tool - Combines web scraping, data integration, and AI to provide researcher insights.")
